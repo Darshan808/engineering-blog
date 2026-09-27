@@ -1,5 +1,5 @@
 ---
-title: Your AI Agent Didn't Read AGENTS.md. Your Linter Doesn't Care.
+title: Your AI Agent Ignored AGENTS.md. Your Linter Won't Let It.
 slug: lint-rules-for-ai-agents
 authors:
 - darshan-paudyal
@@ -13,13 +13,15 @@ A markdown file full of instructions is a polite request. A lint rule is a law. 
 
 Agents are fluent in anything they have seen a million times. Ask for a React component or a Playwright test and you get clean code in seconds. Ask for a JupyterLab extension and you get code that *looks* clean. It compiles, the tests pass, and then it breaks in ways no compiler would notice.
 
-That is because JupyterLab runs on conventions that live one level above the type system. In June, we [announced `@jupyter/eslint-plugin`](https://blog.jupyter.org/catching-jupyter-specific-bugs-before-ci-does-announcing-jupyter-eslint-plugin-fc65ae414630) to catch them, starting with eight rules. The [rules reference](https://eslint-plugin.readthedocs.io/en/latest/category/rules/) now lists 23. We wrote it for human contributors. It turns out the contributors who benefit most might not be human.
+That is because JupyterLab runs on conventions that live one level above the type system. In June, we [announced `@jupyter/eslint-plugin` on the Jupyter Blog](https://blog.jupyter.org/catching-jupyter-specific-bugs-before-ci-does-announcing-jupyter-eslint-plugin-fc65ae414630) to catch them, starting with eight rules. The [rules reference](https://eslint-plugin.readthedocs.io/en/latest/category/rules/) now lists 23. We wrote it for human contributors. It turns out the contributors who benefit most might not be human.
 
 ## Agents are brilliant at the average codebase
 
 Models are best at what they have seen most. The [CloudAPIBench](https://arxiv.org/abs/2407.09726) study found a strong link between how often an API appears in public code and how often models call it correctly. For rarely seen APIs, GPT-4o got it right only 38.58% of the time.
 
-Playwright and React fill millions of repositories. Galata helpers, Lumino signals and JupyterLab plugin IDs are a thin slice of the internet. So agents write the nearest pattern they know. Invented APIs get caught by TypeScript in seconds. The dangerous mistakes are the ones that *work*: code that passes today and flakes tomorrow, or code that works for you and breaks someone downstream.
+Playwright and React fill millions of repositories. Galata helpers, Lumino signals and JupyterLab plugin IDs are a thin slice of the internet. So agents write the nearest pattern they know. Invented APIs get caught by TypeScript in seconds. The dangerous mistakes are the ones that *work*: code that passes today and flakes tomorrow, code that works for you and breaks someone downstream, or code that quietly slows startup for every user.
+
+None of this is about style. The plugin's 23 rules catch memory leaks from Lumino signals nobody disconnects ([`require-signal-cleanup`](https://eslint-plugin.readthedocs.io/en/latest/rules/require-signal-cleanup/)), user-facing text that never reaches translators ([`no-untranslated-string`](https://eslint-plugin.readthedocs.io/en/latest/rules/no-untranslated-string/)), plugin IDs that quietly break admin configuration ([`plugin-id-convention`](https://eslint-plugin.readthedocs.io/en/latest/rules/plugin-id-convention/)) and more. Here are three of the sneakiest, up close.
 
 ## Exhibit A: the test that flakes next month
 
@@ -42,11 +44,37 @@ await page.notebook.runCell(0);
 
 The first version passes on your laptop. But as the [rule docs](https://eslint-plugin.readthedocs.io/en/latest/rules/galata-prefer-notebook-cell-helper/) note, raw selectors depend on notebook markup and skip Galata's readiness checks. Change the markup or slow down the CI runner, and a green test turns flaky weeks after the PR merged. The plugin now has five Galata rules that spot these patterns and name the helper to use.
 
-## Exhibit B: the string that breaks someone else's Monday
+## Exhibit B: the URL that breaks someone else's Monday
 
-Plugin IDs look like `@my-org/my-extension:plugin`. To TypeScript, that is just a string. To JupyterLab, the part before the `:` is the extension's name, used when admins disable, defer or lock an extension ([`plugin-id-convention`](https://eslint-plugin.readthedocs.io/en/latest/rules/plugin-id-convention/)).
+Any extension that talks to the Jupyter server needs a base URL. The obvious way to get one, and the one we have watched frontier agents write, is `PageConfig.getBaseUrl()`:
 
-Say an agent tidies up a plugin ID during a refactor. Every test passes. After release, a `disabledExtensions` entry silently stops matching, users' saved settings seem to vanish, and `overrides.json` quietly stops applying. None of that shows up in your CI. It shows up in someone else's issue tracker.
+```ts
+const url = URLExt.join(PageConfig.getBaseUrl(), 'api', 'contents');
+return ServerConnection.makeRequest(url, {}, serverSettings);
+```
+
+It works on your machine, and every test passes. But JupyterLab can switch backend URLs at runtime, and downstream distributions rely on that. The right source is the server settings you already have:
+
+```ts
+const url = URLExt.join(serverSettings.baseUrl, 'api', 'contents');
+return ServerConnection.makeRequest(url, {}, serverSettings);
+```
+
+As the [`no-pageconfig-base-url`](https://eslint-plugin.readthedocs.io/en/latest/rules/no-pageconfig-base-url/) docs explain, calling `PageConfig.getBaseUrl()` bypasses those settings. Your CI never runs against a switched backend. Someone else's deployment does, right after your release.
+
+## Exhibit C: the import that slows everyone down
+
+JupyterLab core goes out of its way to load heavy packages like `@lumino/datagrid` and `mermaid` only when they are needed. One static import in your extension's index quietly undoes that:
+
+```ts
+// Loads the grid at startup, for every user
+import { DataGrid } from '@lumino/datagrid';
+
+// Loads it only when a grid is actually needed
+const { DataGrid } = await import('@lumino/datagrid');
+```
+
+Humans and agents make this mistake equally easily. No test fails and nothing flakes. Every user just waits a little longer for JupyterLab to open, because top-level imports are downloaded and evaluated before it can start. [`prefer-lazy-imports`](https://eslint-plugin.readthedocs.io/en/latest/rules/prefer-lazy-imports/) catches the static import and points at the lazy version.
 
 ## "Just put it in AGENTS.md"
 
@@ -72,9 +100,9 @@ A file, a line, a rule and the fix. The agent no longer needs to have seen thous
 
 ## What happened when we turned it on
 
-Day to day, the pattern we see is simple. An agent writes raw Playwright or an eager import, the lint run goes red, the agent reads the rule, and it swaps in the Jupyter way before a human reviewer ever looks. Our reviews have shifted from "please use the helper" to the parts of the change that actually need a human.
+Day to day, the pattern we see is simple. An agent writes raw Playwright, an eager import or a hard-coded English label, the lint run goes red, the agent reads the rule, and it swaps in the Jupyter way before a human reviewer ever looks. Our reviews, especially of code from weaker models, have shifted from "please use the helper" and "please add a translation wrapper" to the parts of the change that actually need a human.
 
-New contributors get the same treatment. Few people know Jupyter's conventions on their first PR, and they should not have to. Pre-commit hooks and CI flag the mistake with the rule name and the fix, so the correction comes from a tool in seconds instead of a maintainer days later. Nobody has to be the reviewer who asks for the helper again.
+New contributors get the same treatment. Few people know Jupyter's conventions on their first PR, and they should not have to. Pre-commit hooks and CI flag the mistake with the rule name and the fix, so the correction comes from a tool in seconds instead of a maintainer days later. Nobody has to be the reviewer who asks for the helper or the translation wrapper again.
 
 ## Should your codebase get one?
 
