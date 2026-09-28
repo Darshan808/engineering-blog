@@ -21,7 +21,7 @@ Models are best at what they have seen most. The [CloudAPIBench](https://arxiv.o
 
 Playwright and React fill millions of repositories. Galata helpers, Lumino signals and JupyterLab plugin IDs are a thin slice of the internet. So agents write the nearest pattern they know. Invented APIs get caught by TypeScript in seconds. The dangerous mistakes are the ones that *work*: code that passes today and flakes tomorrow, code that works for you and breaks someone downstream, or code that quietly slows startup for every user.
 
-None of this is about style. The plugin's 23 rules catch memory leaks from Lumino signals nobody disconnects ([`require-signal-cleanup`](https://eslint-plugin.readthedocs.io/en/latest/rules/require-signal-cleanup/)), user-facing text that never reaches translators ([`no-untranslated-string`](https://eslint-plugin.readthedocs.io/en/latest/rules/no-untranslated-string/)), plugin IDs that quietly break admin configuration ([`plugin-id-convention`](https://eslint-plugin.readthedocs.io/en/latest/rules/plugin-id-convention/)) and more. Here are three of the sneakiest, up close.
+These rules are not about style. The plugin's 23 rules catch memory leaks from Lumino signals nobody disconnects ([`require-signal-cleanup`](https://eslint-plugin.readthedocs.io/en/latest/rules/require-signal-cleanup/)), user-facing text that never reaches translators ([`no-untranslated-string`](https://eslint-plugin.readthedocs.io/en/latest/rules/no-untranslated-string/)), plugin IDs that quietly break admin configuration ([`plugin-id-convention`](https://eslint-plugin.readthedocs.io/en/latest/rules/plugin-id-convention/)) and more. Here are three of the sneakiest, up close.
 
 ## Exhibit A: the test that flakes next month
 
@@ -66,12 +66,22 @@ As the [`no-pageconfig-base-url`](https://eslint-plugin.readthedocs.io/en/latest
 
 JupyterLab core goes out of its way to load heavy packages like `@lumino/datagrid` and `mermaid` only when they are needed. One static import in your extension's index quietly undoes that:
 
+Loads the grid at startup, for every user
 ```ts
-// Loads the grid at startup, for every user
 import { DataGrid } from '@lumino/datagrid';
+async function onClick() {
+  const grid = new DataGrid();
+  // ...
+}
+```
 
-// Loads it only when a grid is actually needed
-const { DataGrid } = await import('@lumino/datagrid');
+Loads it only when a grid is actually needed
+```ts
+async function onClick() {
+  const { DataGrid } = await import('@lumino/datagrid');
+  const grid = new DataGrid();
+  // ...
+}
 ```
 
 Humans and agents make this mistake equally easily. No test fails and nothing flakes. Every user just waits a little longer for JupyterLab to open, because top-level imports are downloaded and evaluated before it can start. [`prefer-lazy-imports`](https://eslint-plugin.readthedocs.io/en/latest/rules/prefer-lazy-imports/) catches the static import and points at the lazy version.
@@ -129,6 +139,11 @@ Now it holds one easy instruction, and the linter holds the rest.
 Agents will keep getting better, but they will still be best at the code they have seen most. For ecosystems like Jupyter, the most reliable teacher is a fast failure with a message that says exactly what to do next.
 
 Maintain a Jupyter extension? Install [`@jupyter/eslint-plugin`](https://www.npmjs.com/package/@jupyter/eslint-plugin) and run it once. Have a convention you wish your agent knew? [Open an issue](https://github.com/jupyterlab/eslint-plugin/issues).
+
+## Acknowledgments
+
+This work was funded by the Jupyter Foundation under the first round of Jupyter Community Funded Proposals. Thank you to the Foundation and everyone who set up this funding mechanism.
+And a big thank you to the Jupyter community for engaging with the rules, testing them in real codebases and adopting the plugin across Jupyter projects.
 
 ### Useful links
 
