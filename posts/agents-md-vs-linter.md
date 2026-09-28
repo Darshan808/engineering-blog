@@ -142,7 +142,7 @@ Maintain a Jupyter extension? Install [`@jupyter/eslint-plugin`](https://www.npm
 
 ## Acknowledgments
 
-This work was funded by the Jupyter Foundation under the first round of Jupyter Community Funded Proposals. Thank you to the Foundation and everyone who set up this funding mechanism.
+This work was funded by the Jupyter Foundation under the first round of [Jupyter Community Funded Proposals](https://blog.jupyter.org/announcing-our-first-jupyter-community-funded-proposals-dd5263c19be3). Thank you to the Foundation and everyone who set up this funding mechanism.
 And a big thank you to the Jupyter community for engaging with the rules, testing them in real codebases and adopting the plugin across Jupyter projects.
 
 ### Useful links
