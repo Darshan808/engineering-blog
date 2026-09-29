@@ -1,12 +1,14 @@
 ---
-title: "Where Does Jev Fit in a Software Supply Chain? We Benchmarked It Against the Open Alternatives"
+title: Where Does Jev Fit in a Software Supply Chain? We Benchmarked It Against the Open Alternatives
 slug: jev-bench-package-curation
 authors:
 - brandon-geraci
 categories:
 - Engineering
-meta_description: "We benchmarked TypeSafe's Jev, Laya, CLM-8B and Claude Haiku on five package-curation triage tasks. A fine-tuned 421M model matched Jev at a tenth of the latency."
+meta_description: We benchmarked TypeSafe's Jev, Laya, CLM-8B and Claude Haiku on five package-curation triage tasks. A fine-tuned 421M model matched Jev at a tenth of the latency.
 focus_keyword: jev benchmark
+wordpress_id: 40577
+wordpress_url: https://openteams.com/jev-bench-package-curation/
 ---
 
 I'm building [artifact-keeper](https://github.com/brandonrc/artifact-keeper), an open source artifact manager that checks every package before it reaches a team's registry. Rules decide most of it: allow, block, or send to review. The packages the rules can't decide land in a review queue, and at any real scale that queue is far too long to work through by hand.
