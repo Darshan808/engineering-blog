@@ -17,9 +17,13 @@ This post shows how [`@jupyter/eslint-plugin`](https://www.npmjs.com/package/@ju
 
 ## Agents are great at common code, shaky on rare APIs
 
-Models are best at what they have seen most. The [CloudAPIBench](https://arxiv.org/abs/2407.09726) study found a strong link between how often an API appears in public code and how often models call it correctly. For rarely seen APIs, GPT-4o got it right only 38.58% of the time.
+Models are best at what they have seen most. The [CloudAPIBench](https://arxiv.org/abs/2407.09726) study found a strong link between how often an API appears in public code and how often models call it correctly.
 
-Playwright and React fill millions of repositories. Galata helpers, Lumino signals and JupyterLab plugin IDs are a thin slice of the internet. So agents write the nearest pattern they know. Invented APIs get caught by TypeScript in seconds. The dangerous mistakes are the ones that *work*: code that passes today and flakes tomorrow, code that works for you and breaks someone downstream, or code that quietly slows startup for every user.
+However, for **rarely seen APIs**, GPT-4o got it right only 38.58% of the time.
+
+Playwright and React fill millions of repositories. Galata helpers, Lumino signals and JupyterLab plugin IDs are a thin slice of the internet. So agents write the nearest pattern they know. Invented APIs get caught by TypeScript in seconds.
+
+The dangerous mistakes are the ones that *work*: code that passes today and flakes tomorrow, code that works for you and breaks someone downstream, or code that quietly slows startup for every user.
 
 These rules are not about code style. The plugin's 23 rules catch memory leaks from Lumino signals nobody disconnects ([`require-signal-cleanup`](https://eslint-plugin.readthedocs.io/en/latest/rules/require-signal-cleanup/)), user-facing text that never reaches translators ([`no-untranslated-string`](https://eslint-plugin.readthedocs.io/en/latest/rules/no-untranslated-string/)), plugin IDs that quietly break admin configuration ([`plugin-id-convention`](https://eslint-plugin.readthedocs.io/en/latest/rules/plugin-id-convention/)) and more. The next three sections walk through examples of how an agent makes these mistakes, and how the linter catches each one.
 
